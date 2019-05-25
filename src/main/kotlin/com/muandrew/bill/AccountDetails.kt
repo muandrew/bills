@@ -15,7 +15,7 @@ data class AccountDetails(
                 return AccountDetails(lineTotal, null, null, Money.zero())
             }
 
-            buf.consume().to().match(lineTotal.name).eom()
+            buf.consume().to().match(lineTotal.phoneLine).eom()
             buf.consume().to().prefix("Service from ").eom()
             var planSection: Section? = null
             var section = buf.next()
@@ -38,6 +38,11 @@ data class AccountDetails(
             result.validate()
             return result
         }
+    }
+
+    fun flatten(items: MutableList<FlatItem>, phoneLine: String) {
+        plan?.flatten(items, phoneLine, Section.Type.PLAN)
+        equipment?.flatten(items, phoneLine, Section.Type.EQUIPMENT)
     }
 
     fun validate() {

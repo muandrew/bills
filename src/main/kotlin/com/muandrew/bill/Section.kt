@@ -51,11 +51,20 @@ data class Section(
         }
     }
 
+    fun flatten(flatItems: MutableList<FlatItem>, phoneLine: String, type: Section.Type) {
+        items.forEach { flatItems.add(FlatItem(phoneLine, type, it.description, it.money)) }
+    }
+
     private fun validate() {
-        val itemsSum = items.sum()
+        val itemsSum = items.sumSectionItems()
         if (subtotal != itemsSum) {
             throw IllegalStateException("Yo monies don't add up.")
         }
+    }
+
+    enum class Type {
+        PLAN,
+        EQUIPMENT,
     }
 
     data class Item(val description: String, val money: Money) {
@@ -63,8 +72,9 @@ data class Section(
         companion object {
             fun parse(line: String): Item {
                 val tokens = line.split(" ")
+                val description = tokens.subList(0, tokens.lastIndex).joinToString(" ")
                 return Item(
-                    tokens.subList(0, tokens.lastIndex - 1).joinToString(" "),
+                    description,
                     Money.parse(tokens[tokens.lastIndex])
                 )
             }

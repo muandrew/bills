@@ -50,10 +50,67 @@ fun main(args: Array<String>) {
     assert(amount == recurringAmount.add(otherAmount))
     assert(amount == bill.total)
 
-    println("$bill")
+    val pooledCost = Money.zero()
+    pooledCost.addMut(bill.accountLineItem.computedTotal())
+
+    val flattenItems = mutableListOf<FlatItem>()
+    val accToCost = mutableMapOf<String, MutableList<FlatItem>>()
+    bill.accountDetails.forEach {
+        accToCost[it.lineItem.phoneLine] = mutableListOf()
+        it.flatten(flattenItems, it.lineItem.phoneLine)
+    }
+
+    val additionalAccountCost = mutableListOf<FlatItem>()
+    val phoneLineCost = mutableListOf<FlatItem>()
+
+    flattenItems.forEach {
+        if (it.description.contains("AutoPay Discount") || it.description.contains("T-Mobile ONE")) {
+            additionalAccountCost.add(it)
+        } else {
+            phoneLineCost.add(it)
+        }
+    }
+
+    additionalAccountCost.forEach { pooledCost.addMut(it.money) }
+
+    val totalIndividualCost = Money.zero()
+
+    phoneLineCost.forEach {
+        totalIndividualCost.addMut(it.money)
+        accToCost[it.phoneLine]!!.add(it)
+    }
+
+    assert(pooledCost.add(totalIndividualCost) == bill.total)
+
+    println()
+    println(accToCost)
+    println()
+    println("bill: ${bill.total}")
+    println("pooledCost: $pooledCost")
+    println("totalIndividualCost: $totalIndividualCost")
+    println()
+
+    val individualPooledCost = pooledCost.copy()
+    val remainder = individualPooledCost.divideMut(4)
+    accToCost.forEach {
+        val phoneLine = it.key
+        val cost = it.value.sumFlatItems()
+        val individualTotal = individualPooledCost.add(cost)
+        println("$phoneLine: $individualPooledCost + $cost = $individualTotal")
+    }
 }
 
-fun List<Section.Item>.sum(): Money {
+data class FlatItem(val phoneLine: String, val type: Section.Type, val description: String, val money: Money)
+
+fun List<FlatItem>.sumFlatItems(): Money {
+    val acc = Money.zero()
+    this.forEach {
+        acc.addMut(it.money)
+    }
+    return acc
+}
+
+fun List<Section.Item>.sumSectionItems(): Money {
     val acc = Money.zero()
     this.forEach {
         acc.addMut(it.money)

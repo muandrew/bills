@@ -46,4 +46,10 @@ data class Money (var cents: Long = 0) {
     fun addMut(money: Money) {
         cents += money.cents
     }
+
+    fun divideMut(denominator: Long): Money {
+        val remainder = cents % denominator
+        cents /= denominator
+        return Money(remainder)
+    }
 }
