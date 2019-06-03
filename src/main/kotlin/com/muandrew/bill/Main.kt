@@ -12,21 +12,44 @@ fun main(args: Array<String>) {
         return
     }
     val fileName = args[0]
+    val file = File(fileName)
+    if (file.isDirectory) {
+        file.listFiles()
+            .filter { it.isFile && it.name.endsWith(".pdf") }
+            .forEach {
+                val text = pdfToString(it) ?: return
+                try {
+                    stringToBill(text)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    println("Error reading: ${it.name}")
+                    println("content: ")
+                    println(text)
+                }
+            }
+    } else {
+        parseDocument(file)
+    }
+}
 
-    val doc = PDDocument.load(File(fileName))
+fun pdfToString(file: File): String? {
+    val doc = PDDocument.load(file)
 
     if (doc.isEncrypted) {
         println("document encrypted")
-        return
+        return null
     }
 
     val stripper = PDFTextStripperByArea()
     stripper.sortByPosition = true
 
     val tStripper = PDFTextStripper()
+    val text = tStripper.getText(doc)
+    doc.close()
+    return text
+}
 
-    val pdfFileInText = tStripper.getText(doc)
-
+fun stringToBill(pdfFileInText: String): Bill {
     // split by whitespace
     val lines = pdfFileInText.split("\\r?\\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
     val buf = lines.asList().listIterator()
@@ -98,6 +121,13 @@ fun main(args: Array<String>) {
         val individualTotal = individualPooledCost.add(cost)
         println("$phoneLine: $individualPooledCost + $cost = $individualTotal")
     }
+    println("remainder: $remainder")
+    return bill
+}
+
+fun parseDocument(file: File): Bill? {
+    val pdfFileInText = pdfToString(file) ?: return null
+    return stringToBill(pdfFileInText)
 }
 
 data class FlatItem(val phoneLine: String, val type: Section.Type, val description: String, val money: Money)
