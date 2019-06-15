@@ -1,6 +1,4 @@
-import com.muandrew.bill.LineTotal
-import com.muandrew.bill.Money
-import com.muandrew.bill.consume
+import com.muandrew.bill.*
 
 data class Bill(
     val accountLineItem: LineTotal,
@@ -29,12 +27,12 @@ data class Bill(
 
     companion object {
 
-        fun stringToBill(pdfFileInText: String): Bill {
-            // split by whitespace
-            val lines = pdfFileInText.split("\\r?\\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-            val buf = lines.asList().listIterator()
-
-            val statementFor = buf.consume().to().prefix("Statement for: ").withSfxXform().rtnLastMatch()
+        fun bufToCharge(buf: ListIterator<String>): Charge {
+            buf.consume().to().match("Statement for Account number Bill close date").eom()
+            val info = buf.next()
+            val splitInfo = info.split(" ")
+            val closeDate = splitInfo.subList(splitInfo.size - 3, splitInfo.size).joinToString(" ")
+            buf.consume().to().prefix("Statement for: ").eom()
             val accountNumber = buf.consume().to().prefix("Account number: ").withSfxXform().rtnLastMatch()
             buf.consume().to().match("Total amount due").eom()
             val dueDate = buf.consume().anExpected().prefix("by ").withSfxXform().rtnLastMatch()
@@ -86,24 +84,14 @@ data class Bill(
 
             assert(pooledCost.add(totalIndividualCost) == bill.total)
 
-            println()
-            println(accToCost)
-            println()
-            println("bill: ${bill.total}")
-            println("pooledCost: $pooledCost")
-            println("totalIndividualCost: $totalIndividualCost")
-            println()
-
             val individualPooledCost = pooledCost.copy()
-            val remainder = individualPooledCost.divideMut(4)
-            accToCost.forEach {
+            val remainder = individualPooledCost.divideMut(accToCost.keys.size.toLong())
+            val individuals = accToCost.map {
                 val phoneLine = it.key
                 val cost = it.value.sumFlatItems()
-                val individualTotal = individualPooledCost.add(cost)
-                println("$phoneLine: $individualPooledCost + $cost = $individualTotal")
+                IndividualCharge(phoneLine, individualPooledCost, cost)
             }
-            println("remainder: $remainder")
-            return bill
+            return Charge(closeDate, individuals, remainder)
         }
 
         fun create(buf: ListIterator<String>): Bill {

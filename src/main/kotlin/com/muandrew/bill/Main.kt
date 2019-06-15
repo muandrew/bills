@@ -1,3 +1,5 @@
+import com.muandrew.bill.Charge
+import com.muandrew.bill.v2.BillV2
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.text.PDFTextStripper
 import org.apache.pdfbox.text.PDFTextStripperByArea
@@ -15,18 +17,10 @@ fun main(args: Array<String>) {
         file.listFiles()
             .filter { it.isFile && it.name.endsWith(".pdf") }
             .forEach {
-                val text = pdfToString(it) ?: return
-                try {
-                    Bill.stringToBill(text)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    println("Error reading: ${it.name}")
-                    println("content: ")
-                    println(text)
-                }
+                processDocument(it)
             }
     } else {
-        parseDocument(file)
+        processDocument(file)
     }
 }
 
@@ -47,8 +41,35 @@ fun pdfToString(file: File): String? {
     return text
 }
 
+fun processDocument(file: File) {
+    val text = pdfToString(file) ?: return
+    try {
+        val charge = stringToCharge(text)
+        charge?.printSummary()
+    } catch (e: Exception) {
+        e.printStackTrace()
+        println("Error reading: ${file.name}")
+        println("content: ")
+        println(text)
+    }
+}
 
-fun parseDocument(file: File): Bill? {
-    val pdfFileInText = pdfToString(file) ?: return null
-    return Bill.stringToBill(pdfFileInText)
+fun stringToBuf(pdfFileInText: String): ListIterator<String> {
+    // split by whitespace
+    val lines = pdfFileInText.split("\\r?\\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+    return lines.asList().listIterator()
+}
+
+fun stringToCharge(content: String): Charge? {
+    return when {
+        content.startsWith("Monthly Statement") -> {
+            Bill.bufToCharge(stringToBuf(content))
+        }
+        content.startsWith("Bill period") -> {
+            BillV2.parse(stringToBuf(content))
+        }
+        else -> {
+            throw IllegalStateException("Time to write another one!")
+        }
+    }
 }

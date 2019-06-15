@@ -1,6 +1,6 @@
 package com.muandrew.bill
 
-data class Money (var cents: Long = 0) {
+data class Money(var cents: Long = 0) {
 
     companion object {
 
@@ -25,7 +25,11 @@ data class Money (var cents: Long = 0) {
             }
         }
 
-        fun zero():Money {
+        fun fromDollars(dollars: Long): Money {
+            return Money(dollars * 100)
+        }
+
+        fun zero(): Money {
             return Money(0)
         }
     }
@@ -43,8 +47,16 @@ data class Money (var cents: Long = 0) {
         return Money(cents + money.cents)
     }
 
+    fun subtract(money: Money): Money {
+        return Money(cents - money.cents)
+    }
+
     fun addMut(money: Money) {
         cents += money.cents
+    }
+
+    fun multiply(multiple: Long): Money {
+        return Money(cents * multiple)
     }
 
     fun divideMut(denominator: Long): Money {
