@@ -49,8 +49,6 @@ fun processDocument(file: File) {
     } catch (e: Exception) {
         e.printStackTrace()
         println("Error reading: ${file.name}")
-        println("content: ")
-        println(text)
     }
 }
 
